@@ -3,5 +3,5 @@ kind: Kustomization
 bases:
   - base
 patchesStrategicMerge:
-#  - overlays/podinfo.yaml
+  - overlays/podinfo.yaml
 #  - overlays/canary.yaml

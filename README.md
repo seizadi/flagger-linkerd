@@ -331,6 +331,10 @@ podinfo-primary      2/2     2            2           119s
 Now we can run through the standard Flagger canary test with this tester/podinfo
 setup, I will do one of them you can follow the rest from the Flagger AWS AppMesh
 demo, the behavior should be the same:
+You can watch the behavior like this:
+```bash
+kubectl -n test get --watch canaries
+```
 ```bash
 ❯ kubectl -n test describe canary/podinfo
 ...
@@ -342,7 +346,6 @@ Events:
   Normal   Synced  3m56s                flagger  New revision detected! Scaling up podinfo.test
   Warning  Synced  26s (x7 over 3m26s)  flagger  canary deployment podinfo.test not ready: waiting for rollout to finish: 1 of 2 updated replicas are available
 ```
-
 
 
 ## Debug
@@ -480,7 +483,9 @@ podinfo-primary      2/2     2            2           119s
 ### Minikube Out of Resources
 Tried to run the canary demo and found that I could not
 
-Debuged this to our of CPU resource problem, intersting I hit this
+Debuged this to our of CPU resource problem, 
+[good resource for debugging k8s resource issues](https://kubernetes.io/docs/tasks/debug-application-cluster/debug-pod-replication-controller/),
+interesting I hit this
 before the Memory limits:
 ```bash
 ❯ k describe canary/podinfo
@@ -509,4 +514,5 @@ Events:
   ----     ------            ----                ----               -------
   Warning  FailedScheduling  53s (x16 over 21m)  default-scheduler  0/1 nodes are available: 1 Insufficient cpu.
 ```
-Minikube defaults on my system is 2CPUs and 2GB, so I will bump it to 3CPUs
+Minikube defaults on my system is 2CPUs and 4GB, so I will bump it to 3CPUs which will also increase memory
+to 6GB.

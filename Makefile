@@ -21,9 +21,19 @@ linkerd: cluster
 dashboard:
 	linkerd dashboard                      # launch the Linkerd dashboard
 
-flagger: linkerd
+flagger: linkerd flux
 	kubectl apply -k github.com/weaveworks/flagger//kustomize/linkerd
 	@echo 'Done with deploy Flagger'
+
+flux: .id
+	kubectl create ns flux
+	fluxctl install \
+	--git-user=$(shell cat .id) \
+	--git-email=$(shell cat .id)@users.noreply.github.com \
+	--git-url=git@github.com:$(shell cat .id)/flagger-linkerd \
+	--namespace=flux | kubectl apply -f -
+	sleep 5; fluxctl  --k8s-fwd-ns flux identity
+	@echo 'Done with deploy Flux'
 
 test:
 	kubectl apply -k .

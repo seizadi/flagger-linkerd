@@ -285,12 +285,13 @@ kubectl -n test rollout status deploy podinfo-primary
 After the boostrap, the podinfo deployment will be scaled to zero and the traffic to `podinfo.test`
 will be routed to the primary pods.
 During the canary analysis, the `podinfo-canary.test` address can be used to target directly the canary pods.
-
-<img src="./doc/img/info.png" alt="Note" height="40" width="40"/>
+<p>
+<img src="./doc/img/info.png" alt="Note" height="20" width="20"/>
 Traffic splitting occurs on the client side of the connection and not the server side. 
 Any requests coming from outside the mesh will not be split and will always be directed 
 to the primary. A service of type LoadBalancer will exhibit this behavior as the 
 source is not part of the mesh. To split external traffic, add your ingress controller to the mesh.
+</p>
 
 Check it out by forwarding the service locally and opening 
 [http://localhost:9898](http://localhost:9898) locally by running:
@@ -299,10 +300,29 @@ kubectl -n test port-forward svc/podinfo 9898
 ```
 
 ## Flux Installation
-The two guides at this point test the canary, but decide to run Flux and test the canary
+The two guides at this point test the canary, but decide to run 
+[Flux](https://docs.fluxcd.io/en/latest/tutorials/get-started/) and test the canary
 promotion with that installed.
+```bash
+make flux
+```
+It should display the SSH key using:
+```bash
+fluxctl --k8s-fwd-ns flux identity
+ssh-rsa ..................  
+```
+Copy the public key 'ssh-rsa ....' and create a deploy key with write access on your GitHub repository. 
+Go to Settings > Deploy keys click on Add deploy key, check Allow write access, 
+paste the Flux public key and click Add key.
+
+Once that is done, Flux will pick up the changes in the repository and deploy them to the cluster. You can
+speed up the process by forcing a sync:
+```bash
+fluxctl sync --k8s-fwd-ns flux
+```
 
 ## Debug
+### Metrics-Server & HPA Problem
 Found that we could not get metrics:
 ```bash
 ❯ kubectl -n test get events --watch
@@ -312,7 +332,7 @@ LAST SEEN   TYPE      REASON                    OBJECT                          
 ```
 I think the 
 [Metrics Server](https://github.com/kubernetes-sigs/metrics-server) is missing from my 
-installation but I don't see where I suppose to have installed it! To install it:
+installation but I don't see where in the guides they hightlight I suppose to install it:
 ```bash
 kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.3.6/components.yaml
 ```
@@ -359,3 +379,35 @@ podinfo-primary   Deployment/podinfo-primary   1%/99%          2         4      
 ```
 The <unknown> on podinfo is normal, it has no resources since Flagger scales that down 
 and moves all resources to podinfo-primary, see the replica count is zero.
+
+### Flux duplicate resource problem
+I enabled Flux for my project and ran into this problem:
+```bash
+ts=2020-06-13T07:35:55.204905682Z caller=loop.go:107 component=sync-loop err="loading resources from repo: duplicate definition of '<cluster>:kustomization/' (in base/kustomization.yaml and kustomization.yaml)"
+ts=2020-06-13T07:35:55.206125209Z caller=loop.go:133 component=sync-loop event=refreshed url=ssh://git@github.com/seizadi/flagger-linkerd branch=master HEAD=0d7bc2165dff0f261751d290b83501308dbb2de3
+```
+
+This is a [known Flux issue](https://github.com/fluxcd/flux/issues/2508), there are a lot of mixed
+concerns, like should Kustomize kind be treated like a k8s resource, which is how they are treated,
+even though in my case they are at different heiarchy and they do very different things. The other
+problem is that I didn't specify a git_path thinking it would default to the top level and pick the
+.flux.yaml there and do the right thing, e.g. 'command: kustomize build'. This is what my tree looks
+like with regular files removed:
+```bash
+   ├── .flux.yaml
+   ├── base
+   │   ├── kustomization.yaml
+   │   └── test
+   │       ├── namespace.yaml
+   │       ├── podinfo
+   │       │   ├── canary.yaml
+   │       │   ├── deployment.yaml
+   │       │   └── hpa.yaml
+   │       └── tester
+   │           ├── deployment.yaml
+   │           └── service.yaml
+   └── kustomization.yaml
+```
+One test was to move kustomization.yaml lower in heiarchy and see if it found .flux.yaml
+it would do the right thing?
+

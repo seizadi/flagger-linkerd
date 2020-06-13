@@ -331,6 +331,18 @@ podinfo-primary      2/2     2            2           119s
 Now we can run through the standard Flagger canary test with this tester/podinfo
 setup, I will do one of them you can follow the rest from the Flagger AWS AppMesh
 demo, the behavior should be the same:
+```bash
+❯ kubectl -n test describe canary/podinfo
+...
+Events:
+  Type     Reason  Age                  From     Message
+  ----     ------  ----                 ----     -------
+  Warning  Synced  25m                  flagger  podinfo-primary.test not ready: waiting for rollout to finish: observed deployment generation less then desired generation
+  Normal   Synced  25m                  flagger  Initialization done! podinfo.test
+  Normal   Synced  3m56s                flagger  New revision detected! Scaling up podinfo.test
+  Warning  Synced  26s (x7 over 3m26s)  flagger  canary deployment podinfo.test not ready: waiting for rollout to finish: 1 of 2 updated replicas are available
+```
+
 
 
 ## Debug
@@ -464,3 +476,37 @@ flagger-loadtester   1/1     1            1           2m7s
 podinfo              0/0     0            0           2m7s
 podinfo-primary      2/2     2            2           119s
 ```
+
+### Minikube Out of Resources
+Tried to run the canary demo and found that I could not
+
+Debuged this to our of CPU resource problem, intersting I hit this
+before the Memory limits:
+```bash
+❯ k describe canary/podinfo
+....
+Events:
+  Type     Reason  Age                From     Message
+  ----     ------  ----               ----     -------
+  Warning  Synced  47m                flagger  podinfo-primary.test not ready: waiting for rollout to finish: observed deployment generation less then desired generation
+  Normal   Synced  47m                flagger  Initialization done! podinfo.test
+  Normal   Synced  25m                flagger  New revision detected! Scaling up podinfo.test
+  Warning  Synced  8s (x51 over 25m)  flagger  canary deployment podinfo.test not ready: waiting for rollout to finish: 1 of 2 updated replicas are available
+
+❯ k get pods
+NAME                                 READY   STATUS    RESTARTS   AGE
+flagger-loadtester-bd6b9c69f-kw2wv   2/2     Running   0          43m
+podinfo-df4c95d5d-kv66m              0/2     Pending   0          21m
+podinfo-df4c95d5d-pndk6              2/2     Running   0          21m
+podinfo-primary-58bf47f9dd-hq744     2/2     Running   0          43m
+podinfo-primary-58bf47f9dd-kbxvd     2/2     Running   0          42m
+❯ k describe pod podinfo-df4c95d5d-kv66m
+Name:           podinfo-df4c95d5d-kv66m
+Namespace:      test
+....
+Events:
+  Type     Reason            Age                 From               Message
+  ----     ------            ----                ----               -------
+  Warning  FailedScheduling  53s (x16 over 21m)  default-scheduler  0/1 nodes are available: 1 Insufficient cpu.
+```
+Minikube defaults on my system is 2CPUs and 2GB, so I will bump it to 3CPUs

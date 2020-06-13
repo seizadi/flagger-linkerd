@@ -5,7 +5,7 @@ export FLAGGER_NS = linkerd
 	git config user.email | awk -F@ '{print $$1}' > .id
 
 cluster:
-	minikube stop; minikube delete; minikube start; minikube addons enable metrics-server
+	minikube stop; minikube delete; minikube start --cpus=3 ; minikube addons enable metrics-server
 	@echo 'Built minikube cluster'
 
 metric-server: cluster

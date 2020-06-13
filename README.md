@@ -320,6 +320,18 @@ speed up the process by forcing a sync:
 ```bash
 fluxctl sync --k8s-fwd-ns flux
 ```
+Now you should have the test namespace and the canary deployment:
+```bash
+❯ k -n test get deploy
+NAME                 READY   UP-TO-DATE   AVAILABLE   AGE
+flagger-loadtester   1/1     1            1           2m7s
+podinfo              0/0     0            0           2m7s
+podinfo-primary      2/2     2            2           119s
+```
+Now we can run through the standard Flagger canary test with this tester/podinfo
+setup, I will do one of them you can follow the rest from the Flagger AWS AppMesh
+demo, the behavior should be the same:
+
 
 ## Debug
 ### Metrics-Server & HPA Problem
@@ -388,10 +400,11 @@ ts=2020-06-13T07:35:55.206125209Z caller=loop.go:133 component=sync-loop event=r
 ```
 
 This is a [known Flux issue](https://github.com/fluxcd/flux/issues/2508), there are a lot of mixed
-concerns, like should Kustomize kind be treated like a k8s resource, which is how they are treated,
+concerns, like should Kustomize kind be treated like a k8s resource, which is how they are treated
+by Fluxd,
 even though in my case they are at different heiarchy and they do very different things. The other
 problem is that I didn't specify a git_path thinking it would default to the top level and pick the
-.flux.yaml there and do the right thing, e.g. 'command: kustomize build'. This is what my tree looks
+.flux.yaml and do the right thing, e.g. 'command: kustomize build'. This is what my tree looks
 like with regular files removed:
 ```bash
    ├── .flux.yaml
@@ -408,6 +421,46 @@ like with regular files removed:
    │           └── service.yaml
    └── kustomization.yaml
 ```
-One test was to move kustomization.yaml lower in heiarchy and see if it found .flux.yaml
+One test was to move kustomization.yaml lower in heiarchy and see if it found .flux.yaml first
 it would do the right thing?
 
+```bash
+├── .flux.yaml
+└── workloads
+    ├── base
+    │   ├── kustomization.yaml
+    │   └── test
+    │       ├── namespace.yaml
+    │       ├── podinfo
+    │       │   ├── canary.yaml
+    │       │   ├── deployment.yaml
+    │       │   └── hpa.yaml
+    │       └── tester
+    │           ├── deployment.yaml
+    │           └── service.yaml
+    └── kustomization.yaml
+```
+Looks like now it picks up the .flux.yaml and is happy, but nothing happens!
+```bash
+ts=2020-06-13T13:42:15.334315796Z caller=loop.go:141 component=sync-loop jobID=04497018-87aa-01a5-bd3d-66e86b2a9033 state=in-progress
+ts=2020-06-13T13:42:16.029634555Z caller=loop.go:153 component=sync-loop jobID=04497018-87aa-01a5-bd3d-66e86b2a9033 state=done success=true
+ts=2020-06-13T13:42:16.741161086Z caller=loop.go:133 component=sync-loop event=refreshed url=ssh://git@github.com/seizadi/flagger-linkerd branch=master HEAD=ad66399c28b11ecd5806911888fef59998766549
+```
+Looks like I am missing a option *"--manifest-generation=true"* for .flux.yaml to work see
+[.flux.yaml config guide](https://docs.fluxcd.io/en/1.17.1/references/fluxyaml-config-files.html).
+
+Added that option and now it pulls the deployment and creates the test namespace:
+```bash
+❯ k get namespaces                                                                                   2.6.3 ⎈ minikube
+NAME              STATUS   AGE
+...
+test              Active   69s
+```
+The canary is working:
+```bash
+❯ k -n test get deploy
+NAME                 READY   UP-TO-DATE   AVAILABLE   AGE
+flagger-loadtester   1/1     1            1           2m7s
+podinfo              0/0     0            0           2m7s
+podinfo-primary      2/2     2            2           119s
+```

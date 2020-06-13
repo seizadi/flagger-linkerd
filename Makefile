@@ -12,7 +12,7 @@ metric-server: cluster
 	kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.3.6/components.yaml
 	@echo 'Done with deploy Metrics Server'
 
-linkerd: cluster
+linkerd:
 	linkerd check --pre                     # validate that Linkerd can be installed
 	linkerd install | kubectl apply -f -    # install the control plane into the 'linkerd' namespace
 	linkerd check                           # validate everything worked!
@@ -21,7 +21,7 @@ linkerd: cluster
 dashboard:
 	linkerd dashboard                      # launch the Linkerd dashboard
 
-flagger: linkerd flux
+flagger: cluster linkerd flux
 	kubectl apply -k github.com/weaveworks/flagger//kustomize/linkerd
 	@echo 'Done with deploy Flagger'
 
@@ -31,8 +31,9 @@ flux: .id
 	--git-user=$(shell cat .id) \
 	--git-email=$(shell cat .id)@users.noreply.github.com \
 	--git-url=git@github.com:$(shell cat .id)/flagger-linkerd \
+	--manifest-generation=true \
 	--namespace=flux | kubectl apply -f -
-	sleep 5; fluxctl  --k8s-fwd-ns flux identity
+	sleep 10; fluxctl  --k8s-fwd-ns flux identity
 	@echo 'Done with deploy Flux'
 
 test:

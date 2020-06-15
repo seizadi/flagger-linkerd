@@ -29,6 +29,34 @@ is a good description of the Linkerd operational elments and follow the same exa
 ## References
 [Flagger Docs](https://docs.flagger.app/)
 
+## Run demo
+```bash
+make flagger
+make test
+```
+At this point you should have the demo running and you can open the minikube address for the ingress to
+see the application. There are some overlays in the kustomization.yaml, you can comment out:
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+bases:
+  - base
+patchesStrategicMerge:
+#  - overlays/podinfo.yaml
+#  - overlays/canary.yaml
+```
+For example comment out the overlays/podinfo.yaml, and them run
+```bash
+make test
+```
+To apply the changes. You can see the canary progression
+```bash
+kubectl -n test get --watch canaries
+```
+
+The rest of this writeup is more detail about the above general summary of
+the setup and configuration.
+
 ## Setup cluster
 
 **** CAUTION THE STEPS BELOW WILL DELETE YOUR MINIKUBE INSTALLATION ****

@@ -5,5 +5,6 @@ resources:
 - test/podinfo/canary.yaml
 - test/podinfo/deployment.yaml
 - test/podinfo/hpa.yaml
+- test/podinfo/ingress.yaml
 - test/tester/deployment.yaml
 - test/tester/service.yaml

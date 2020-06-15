@@ -5,7 +5,10 @@ export FLAGGER_NS = linkerd
 	git config user.email | awk -F@ '{print $$1}' > .id
 
 cluster:
-	minikube stop; minikube delete; minikube start --cpus=3 ; minikube addons enable metrics-server
+	minikube stop; minikube delete;
+	minikube start --cpus=3
+	# minikube addons enable ingress
+	kubectl apply -f https://j.hept.io/contour-deployment-rbac # Add Contour instead of NGIX
 	@echo 'Built minikube cluster'
 
 metric-server: cluster
@@ -37,7 +40,7 @@ flux: .id
 	@echo 'Done with deploy Flux'
 
 test:
-	kubectl apply -k .
+	kubectl apply -k workloads
 	@echo 'Done with deploy test application'
 
 

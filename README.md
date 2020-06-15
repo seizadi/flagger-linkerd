@@ -516,3 +516,44 @@ Events:
 ```
 Minikube defaults on my system is 2CPUs and 4GB, so I will bump it to 3CPUs which will also increase memory
 to 6GB.
+
+### Don't see the traffic split working
+I decided to add an Ingress and test if traffic distribution is working properly, found that
+although it looked like the control plane was working the data plane did not show the traffic
+mix you expect to the browser.
+
+Here is the guide on setting up 
+[Ingress with Linkerd](https://linkerd.io/2/tasks/using-ingress). I have been meaning to test Contour, 
+[doesn't look like it works well with Linkerd](https://linkerd.io/2/tasks/using-ingress/#contour).
+
+The ingress is setup to point to the *service/podinfo*, note special annotations for Linkerd to
+route traffic properly:
+```yaml
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  labels:
+    app: podinfo
+  name: podinfo
+  namespace: test
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header l5d-dst-override $service_name.$namespace.svc.cluster.local:$service_port;
+      grpc_set_header l5d-dst-override $service_name.$namespace.svc.cluster.local:$service_port;
+spec:
+  backend:
+    serviceName: podinfo
+    servicePort: 9898
+```
+Here is the view of the control plane going through, note both the Flagger Canary and Linkerd TrafficSplit
+CRDs show the proper traffic mix, in two windows you see the following running:
+```bash
+kubectl -n test get --watch canaries
+watch kubectl -n test describe ts podinfo
+```
+![traffic](doc/img/ts_bug.png)
+
+When I look at the browser I only see traffic that would be coming from the primary. while both
+the primary/canary mix on both windows go through their progression, only 
+when promotion happens and traffic is shifted from canary to primary I see the image change.

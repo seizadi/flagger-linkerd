@@ -7,8 +7,8 @@ export FLAGGER_NS = linkerd
 cluster:
 	minikube stop; minikube delete;
 	minikube start --cpus=3
-	# minikube addons enable ingress
-	kubectl apply -f https://j.hept.io/contour-deployment-rbac # Add Contour instead of NGIX
+	minikube addons enable ingress
+	minikube addons enable metrics-server
 	@echo 'Built minikube cluster'
 
 metric-server: cluster

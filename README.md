@@ -30,12 +30,31 @@ is a good description of the Linkerd operational elments and follow the same exa
 [Flagger Docs](https://docs.flagger.app/)
 
 ## Run demo
+**** CAUTION THE STEPS BELOW WILL DELETE YOUR CURRENT MINIKUBE INSTALLATION ****
+
 ```bash
 make flagger
 make test
 ```
-At this point you should have the demo running and you can open the minikube address for the ingress to
-see the application. There are some overlays in the kustomization.yaml, you can comment out:
+At this point you should have the demo running, and you can open the minikube address for the ingress to
+see the application.
+```bash
+curl http://$(minikube ip)
+{
+  "hostname": "podinfo-primary-69dbbfcf8f-wzvsz",
+  "version": "3.1.0",
+  "revision": "7b6f11780ab1ce8c7399da32ec6966215b8e43aa",
+  "color": "#34577c",
+  "logo": "https://eks.handson.flagger.dev/cuddle_clap.gif",
+  "message": "greetings from podinfo v3.1.0",
+  "goos": "linux",
+  "goarch": "amd64",
+  "runtime": "go1.13.1",
+  "num_goroutine": "8",
+  "num_cpu": "3"
+}
+```
+There are some overlays in the kustomization.yaml, you can comment out:
 ```yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
@@ -53,9 +72,13 @@ To apply the changes. You can see the canary progression
 ```bash
 kubectl -n test get --watch canaries
 ```
+See the traffic during the cycle:
+```bash
+watch curl http://$(minikube ip)
+```
 
-The rest of this writeup is more detail about the above general summary of
-the setup and configuration.
+The rest of this writeup is more detail more notes that I wrote as I went
+through the varous stages and any issues I found.
 
 ## Setup cluster
 
@@ -65,13 +88,8 @@ If you are new to Linkerd you can follow their
 [setup instructions](https://linkerd.io/2/getting-started/).
 
 The Linkerd guide has following manifest for Flagger and Test app that is a 
-Buyonet image, buoyantio/slow_cooker:1.2.0, 
-bundled with NGINX proxy:
-```bash
-kubectl create ns test && \
-  kubectl apply -f https://run.linkerd.io/flagger.yml
-```
-We will follow the Flagger setup but the basic operation is the same.
+Buyonet image, buoyantio/slow_cooker:1.2.0, We will follow the Flagger setup but
+the basic operation is the same.
 
 At the time of running my tests, the version that I am running:
 ```bash
@@ -245,7 +263,7 @@ service/podinfo-primary
 trafficsplits.split.smi-spec.io/podinfo
 ```
 
-The traffic split CRD is intersting to look at:
+The traffic split CRD is interesting to look at:
 ```bash
 k -n test get TrafficSplit -o yaml
 apiVersion: v1
@@ -293,7 +311,7 @@ metadata:
   selfLink: ""
 ```
 
-You should be able to observe the backend reference as Flagger update the canary and update
+You should be able to observe the backend reference as Flagger updates the canary and update
 traffic flow based on analysis:
 ```yaml
   spec:
@@ -313,19 +331,16 @@ kubectl -n test rollout status deploy podinfo-primary
 After the boostrap, the podinfo deployment will be scaled to zero and the traffic to `podinfo.test`
 will be routed to the primary pods.
 During the canary analysis, the `podinfo-canary.test` address can be used to target directly the canary pods.
-<p>
-<img src="./doc/img/info.png" alt="Note" height="20" width="20"/>
+
+<img src="./doc/img/info.png" alt="Note" height="20" width="20"/> NOTE
+
 Traffic splitting occurs on the client side of the connection and not the server side. 
 Any requests coming from outside the mesh will not be split and will always be directed 
 to the primary. A service of type LoadBalancer will exhibit this behavior as the 
 source is not part of the mesh. To split external traffic, add your ingress controller to the mesh.
-</p>
 
-Check it out by forwarding the service locally and opening 
-[http://localhost:9898](http://localhost:9898) locally by running:
-```bash
-kubectl -n test port-forward svc/podinfo 9898
-```
+Which is what I did in this demo by creating an ingress for podinfo, 
+more detail on this later in this guide.
 
 ## Flux Installation
 The two guides at this point test the canary, but decide to run 
@@ -374,7 +389,6 @@ Events:
   Normal   Synced  3m56s                flagger  New revision detected! Scaling up podinfo.test
   Warning  Synced  26s (x7 over 3m26s)  flagger  canary deployment podinfo.test not ready: waiting for rollout to finish: 1 of 2 updated replicas are available
 ```
-
 
 ## Debug
 ### Metrics-Server & HPA Problem

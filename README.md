@@ -389,6 +389,10 @@ Events:
   Normal   Synced  3m56s                flagger  New revision detected! Scaling up podinfo.test
   Warning  Synced  26s (x7 over 3m26s)  flagger  canary deployment podinfo.test not ready: waiting for rollout to finish: 1 of 2 updated replicas are available
 ```
+## FluxCloud
+I found [FluxCloud](https://github.com/justinbarrick/fluxcloud) an intersting project
+for building event subsystem, should compare to 
+[ArgoEvents](https://github.com/argoproj/argo-events).
 
 ## Debug
 ### Metrics-Server & HPA Problem

@@ -394,6 +394,29 @@ I found [FluxCloud](https://github.com/justinbarrick/fluxcloud) an intersting pr
 for building event subsystem, should compare to 
 [ArgoEvents](https://github.com/argoproj/argo-events).
 
+## ArgoCD
+I set this up using ArgoCD as well
+
+* Click "New application"
+
+| Field | Value |
+|-------|-------|
+| Application name: | `seizadi-canary` |
+| Project: | `default` |
+| Sync policy: | `Manual` |
+| Repository: | `https://github.com/seizadi/flagger-linkerd` |
+| Revision: | `HEAD` |
+| Path: | `examples/argocd/lab/overlays/dev` |
+| Cluster: | `https://kubernetes.default.svc` |
+| Namespace: | `test` |
+
+The UI is smart enough to fill in some fields.
+
+* Click "Sync".
+* Click "Synchronize" in the Sliding panel.
+
+Now you should have a green application and pod running.
+
 ## Debug
 ### Metrics-Server & HPA Problem
 Found that we could not get metrics:

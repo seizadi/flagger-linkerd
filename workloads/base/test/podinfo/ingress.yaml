@@ -15,6 +15,7 @@ spec:
     - host: minikube
       http:
         paths:
-          - backend:
-              serviceName: podinfo
-              servicePort: 9898
+        - path: /podinfo
+          backend:
+            serviceName: podinfo
+            servicePort: 9898

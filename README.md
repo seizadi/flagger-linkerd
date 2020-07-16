@@ -626,3 +626,6 @@ watch kubectl -n test describe ts podinfo
 When I look at the browser I only see traffic that would be coming from the primary. while both
 the primary/canary mix on both windows go through their progression, only 
 when promotion happens and traffic is shifted from canary to primary I see the image change.
+
+Look at this post for similar ingress 
+[problem with traffic split](https://discourse.linkerd.io/t/configure-traffic-split-with-nginx-ingress-controller/1003)

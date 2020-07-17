@@ -607,13 +607,19 @@ metadata:
   namespace: test
   annotations:
     kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
     nginx.ingress.kubernetes.io/configuration-snippet: |
       proxy_set_header l5d-dst-override $service_name.$namespace.svc.cluster.local:$service_port;
       grpc_set_header l5d-dst-override $service_name.$namespace.svc.cluster.local:$service_port;
 spec:
-  backend:
-    serviceName: podinfo
-    servicePort: 9898
+  rules:
+    - host: minikube
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: podinfo
+              servicePort: 9898
 ```
 Here is the view of the control plane going through, note both the Flagger Canary and Linkerd TrafficSplit
 CRDs show the proper traffic mix, in two windows you see the following running:

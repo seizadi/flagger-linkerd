@@ -698,12 +698,6 @@ The test is installed in the echo namespace:
 ```bash
 ❯ kn echo
 Context "kind-kind" modified.
-❯ k get svc
-NAME                TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
-echo-can-service    ClusterIP   10.99.235.197   <none>        5678/TCP   98s
-echo-prim-service   ClusterIP   10.96.98.13     <none>        5678/TCP   98s
-❯ kn echo
-Context "kind-kind" modified.
 ❯ k get deploy
 NAME            READY   UP-TO-DATE   AVAILABLE   AGE
 echo-can-app    1/1     1            1           59s

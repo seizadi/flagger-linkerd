@@ -1,0 +1,73 @@
+kind: Pod
+apiVersion: v1
+metadata:
+  name: echo-prim-app
+  labels:
+    app: echo-prim
+spec:
+  containers:
+    - name: echo-prim-app
+      image: hashicorp/http-echo:0.2.3
+      args:
+        - "-text=primary"
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: echo-prim-service
+spec:
+  selector:
+    app: echo-prim
+  ports:
+    # Default port used by the image
+    - port: 5678
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: echo-can-app
+  labels:
+    app: echo-can
+spec:
+  containers:
+    - name: echo-can-app
+      image: hashicorp/http-echo:0.2.3
+      args:
+        - "-text=canary"
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: echo-can-service
+spec:
+  selector:
+    app: echo-can
+  ports:
+    # Default port used by the image
+    - port: 5678
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: echo-ingress
+  namespace: test
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header l5d-dst-override $service_name.$namespace.svc.cluster.local:$service_port;
+      grpc_set_header l5d-dst-override $service_name.$namespace.svc.cluster.local:$service_port;
+spec:
+  rules:
+    - host: minikube
+      http:
+        paths:
+          - path: /primary
+            backend:
+              serviceName: echo-prim-service
+              servicePort: 5678
+          - path: /canary
+            backend:
+              serviceName: echo-can-service
+              servicePort: 5678
+---

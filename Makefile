@@ -24,7 +24,7 @@ linkerd:
 dashboard:
 	linkerd dashboard                      # launch the Linkerd dashboard
 
-flagger: cluster linkerd flux
+flagger: cluster linkerd
 	kubectl apply -k github.com/weaveworks/flagger//kustomize/linkerd
 	@echo 'Done with deploy Flagger'
 

@@ -1,0 +1,24 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: echo-prim-service
+  namespace: echo
+spec:
+  selector:
+    app: echo-prim
+  ports:
+    # Default port used by the image
+    - port: 5678
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: echo-can-service
+  namespace: echo
+spec:
+  selector:
+    app: echo-can
+  ports:
+    # Default port used by the image
+    - port: 5678
+---

@@ -1,0 +1,49 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: echo-prim-app
+  namespace: echo
+  labels:
+    app: echo-prim
+spec:
+  selector:
+    matchLabels:
+      app: echo-prim
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: enabled
+      labels:
+        app: echo-prim
+    spec:
+      containers:
+        - name: echo-prim-app
+          image: hashicorp/http-echo:0.2.3
+          args:
+            - "-text=primary"
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: echo-can-app
+  namespace: echo
+  labels:
+    app: echo-can
+spec:
+  selector:
+    matchLabels:
+      app: echo-can
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: enabled
+      labels:
+        app: echo-can
+    spec:
+      containers:
+        - name: echo-can-app
+          image: hashicorp/http-echo:0.2.3
+          args:
+            - "-text=canary"

@@ -1,0 +1,12 @@
+apiVersion: split.smi-spec.io/v1alpha1
+kind: TrafficSplit
+metadata:
+  name: service-split
+  namespace: echo
+spec:
+  service: echo-prim-service
+  backends:
+    - service: echo-prim-service
+      weight: 500m
+    - service: echo-can-service
+      weight: 500m

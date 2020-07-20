@@ -635,3 +635,187 @@ when promotion happens and traffic is shifted from canary to primary I see the i
 
 Look at this post for similar ingress 
 [problem with traffic split](https://discourse.linkerd.io/t/configure-traffic-split-with-nginx-ingress-controller/1003)
+
+#### Setup Kind cluster with NGINX Ingress
+In the dialog to fix this, sounds like this worked on Kind, so I setup a similar setup
+[using kind](https://kind.sigs.k8s.io/docs/user/ingress/#create-cluster):
+```bash
+cat <<EOF | kind create cluster --config=-
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+- role: control-plane
+  kubeadmConfigPatches:
+  - |
+    kind: InitConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "ingress-ready=true"
+  extraPortMappings:
+  - containerPort: 80
+    hostPort: 80
+    protocol: TCP
+  - containerPort: 443
+    hostPort: 443
+    protocol: TCP
+EOF
+```
+
+Then follow instructions for setting up ingress 
+[using NGINX on kind](https://kind.sigs.k8s.io/docs/user/ingress/#ingress-nginx)
+```bash
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/provider/kind/deploy.yaml
+kubectl wait --namespace ingress-nginx \
+  --for=condition=ready pod \
+  --selector=app.kubernetes.io/component=controller \
+  --timeout=90s
+```
+
+#### Debug Linkerd
+I wrote a new manifest to test this without Flagger. It sets up two deployments and
+two services and a traffic split CRD that splits the traffic between them, with Ingress that
+looks at the root service from traffic splitter:
+```bash
+k apply -k echo-test
+```
+
+I found that this did not work with either minikube or kind clusters Ingress, I setup Linkerd 
+this version:
+```bash
+❯ linkerd version
+Client version: stable-2.8.0
+Server version: stable-2.8.0
+```
+
+These commands:
+```bash
+linkerd check --pre                     # validate that Linkerd can be installed
+linkerd install | kubectl apply -f -    # install the control plane into the 'linkerd' namespace
+linkerd check 
+```
+
+The test is installed in the echo namespace:
+```bash
+❯ kn echo
+Context "kind-kind" modified.
+❯ k get svc
+NAME                TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+echo-can-service    ClusterIP   10.99.235.197   <none>        5678/TCP   98s
+echo-prim-service   ClusterIP   10.96.98.13     <none>        5678/TCP   98s
+❯ kn echo
+Context "kind-kind" modified.
+❯ k get deploy
+NAME            READY   UP-TO-DATE   AVAILABLE   AGE
+echo-can-app    1/1     1            1           59s
+echo-prim-app   1/1     1            1           59s
+❯ k get svc
+NAME                TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+echo-can-service    ClusterIP   10.100.114.238   <none>        5678/TCP   65s
+echo-prim-service   ClusterIP   10.99.94.253     <none>        5678/TCP   65s
+❯ k get ts -o yaml
+apiVersion: v1
+items:
+- apiVersion: split.smi-spec.io/v1alpha1
+  kind: TrafficSplit
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"split.smi-spec.io/v1alpha1","kind":"TrafficSplit","metadata":{"annotations":{},"name":"service-split","namespace":"echo"},"spec":{"backends":[{"service":"echo-prim-service","weight":"500m"},{"service":"echo-can-service","weight":"500m"}],"service":"echo-prim-service"}}
+    creationTimestamp: "2020-07-20T02:36:15Z"
+    generation: 1
+    managedFields:
+    - apiVersion: split.smi-spec.io/v1alpha1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:metadata:
+          f:annotations:
+            .: {}
+            f:kubectl.kubernetes.io/last-applied-configuration: {}
+        f:spec:
+          .: {}
+          f:backends: {}
+          f:service: {}
+      manager: kubectl
+      operation: Update
+      time: "2020-07-20T02:36:15Z"
+    name: service-split
+    namespace: echo
+    resourceVersion: "6684"
+    selfLink: /apis/split.smi-spec.io/v1alpha1/namespaces/echo/trafficsplits/service-split
+    uid: 8603a643-1e6e-4aea-a307-fd9c49bbe9e8
+  spec:
+    backends:
+    - service: echo-prim-service
+      weight: 500m
+    - service: echo-can-service
+      weight: 500m
+    service: echo-prim-service
+kind: List
+metadata:
+  resourceVersion: ""
+  selfLink: ""
+
+```
+
+It looks like the traffic split is working on Kind cluster:
+```
+❯ kn echo
+Context "kind-kind" modified.
+❯ kubectl run -it --rm --image=infoblox/dnstools api-test
+If you don't see a command prompt, try pressing enter.
+dnstools# while true; do curl http://echo-prim-service.echo:5678; sleep 1; done
+primary
+canary
+canary
+primary
+primary
+primary
+primary
+canary
+canary
+...
+```
+ Same on minikube:
+ ```bash
+ dnstools# while true; do curl http://echo-prim-service.echo:5678; sleep 1; done
+ canary
+ canary
+ primary
+ canary
+ primary
+ primary
+ canary
+ primary
+ primary
+ canary
+ primary
+ canary
+ canary
+ canary
+ canary
+ canary
+...
+```
+Minikube Ingress does not work...
+```bash
+❯ while true; do curl minikube/echo; sleep 1; done
+primary
+primary
+primary
+primary
+primary
+primary
+primary
+```
+
+It doesn't work on Kind either:
+```bash
+❯ while true; do curl localhost/echo; sleep 1; done
+primary
+primary
+primary
+primary
+primary
+primary
+primary
+```

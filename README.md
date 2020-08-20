@@ -406,7 +406,7 @@ I set this up using ArgoCD as well
 | Sync policy: | `Manual` |
 | Repository: | `https://github.com/seizadi/flagger-linkerd` |
 | Revision: | `HEAD` |
-| Path: | `examples/argocd/lab/overlays/dev` |
+| Path: | `workloads` |
 | Cluster: | `https://kubernetes.default.svc` |
 | Namespace: | `test` |
 
@@ -812,4 +812,41 @@ primary
 primary
 primary
 primary
+```
+
+I had similar behavior when I used a contianer not in the same namespace:
+```bash
+❯ kn default
+Context "minikube" modified.
+❯ kubectl run -it --rm --image=infoblox/dnstools api-test
+If you don't see a command prompt, try pressing enter.
+dnstools# while true; do curl http://echo-prim-service.echo:5678; sleep 1; done
+primary
+primary
+primary
+primary
+primary
+...
+```
+##### Fix for Linkerd / Ingress SMI problem
+
+If I injected the nginx controller so that it is part of the mesh:
+```bash
+kubectl -n kube-system get deploy ingress-nginx-controller -o yaml | \
+   linkerd inject - | \
+   kubectl apply -f -
+```
+
+Now ingress is working, so if you want ingress to work you have to include the Ingress Controller
+as part of the mesh. I 
+[validated with Linkerd team](https://discourse.linkerd.io/t/configure-traffic-split-with-nginx-ingress-controller/1003/19?u=seizadi)
+that this is how it is suppose to work.
+
+```bash
+❯ while true; do curl minikube/echo; sleep 1; done
+primary
+primary
+canary
+primary
+canary
 ```

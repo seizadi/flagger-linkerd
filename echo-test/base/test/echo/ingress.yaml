@@ -11,7 +11,7 @@ metadata:
       grpc_set_header l5d-dst-override $service_name.$namespace.svc.cluster.local:$service_port;
 spec:
   rules:
-    - host: localhost
+    - host: minikube
       http:
         paths:
           - path: /echo
